@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: statuspage-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: statuspage-worker
+  template:
+    metadata:
+      labels:
+        app: statuspage-worker
+    spec:
+      containers:
+        - name: worker
+          image: REPLACE_WITH_YOUR_ECR_REPO_URL:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/entrypoint.sh"]
+          args: ["python", "manage.py", "rqworker", "high", "default", "low"]
+          env:
+            - name: DATABASE_NAME
+              value: "statuspage"
+            - name: DATABASE_USER
+              value: "statuspage"
+            - name: DATABASE_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: statuspage-app-secrets
+                  key: DATABASE_HOST
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: statuspage-app-secrets
+                  key: DATABASE_PASSWORD
+            - name: REDIS_HOST
+              value: "redis"
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: statuspage-app-secrets
+                  key: SECRET_KEY

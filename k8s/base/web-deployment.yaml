@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: statuspage-web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: statuspage-web
+  template:
+    metadata:
+      labels:
+        app: statuspage-web
+    spec:
+      serviceAccountName: default
+      containers:
+        - name: web
+          image: REPLACE_WITH_YOUR_ECR_REPO_URL:latest
+          imagePullPolicy: IfNotPresent
+          command: ["/entrypoint.sh"]
+          args: ["gunicorn", "statuspage.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "90"]
+          env:
+            - name: DATABASE_NAME
+              value: "statuspage"
+            - name: DATABASE_USER
+              value: "statuspage"
+            - name: DATABASE_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: statuspage-app-secrets
+                  key: DATABASE_HOST
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: statuspage-app-secrets
+                  key: DATABASE_PASSWORD
+            - name: REDIS_HOST
+              value: "redis"
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: statuspage-app-secrets
+                  key: SECRET_KEY
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: static-files
+              mountPath: /opt/status-page/static_files
+      volumes:
+        - name: static-files
+          persistentVolumeClaim:
+            claimName: statuspage-static-pvc
